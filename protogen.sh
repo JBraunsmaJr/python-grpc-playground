@@ -1,13 +1,15 @@
+
+rm -rf ./app/generated
 mkdir -p ./app/generated
 
 if [ ! -f "./app/generated/__init__.py" ]; then
   touch ./app/generated/__init__.py
-  cat <<EOF
+  cat <<EOF > ./app/generated/__init__.py
 import sys
 import os
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-EOF >> ./app/generated/__init__.py
+EOF
 fi
 
 for file in ./protos/*.proto; do
@@ -20,7 +22,7 @@ for file in ./protos/*.proto; do
   if [ ! -f "$dir/__init__.py" ]; then
     touch "$dir/__init__.py"
 
-    echo "sys.path.append(os.path.join(CURRENT_DIR, ""$file_transfers""))" >> ./app/generated/__init__.py
+    echo "sys.path.append(os.path.join(CURRENT_DIR, \"$filename\"))" >> ./app/generated/__init__.py
   fi
 
   python -m grpc_tools.protoc -I./protos --python_out="$dir" --pyi_out="$dir" --grpc_python_out="$dir" $file

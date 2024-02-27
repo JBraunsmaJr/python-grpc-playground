@@ -4,21 +4,14 @@ syntax = "proto3";
   Represents a subset of a file that can be streamed across the wire.
  */
 message FileChunk {
-
-  /*
-    Not sure if required, but meant to behave as an ordering mechanism in the event latency could
-    result in consumer getting things out of order
-  */
-  int32 chunkSegmentId = 1;
-
   // The intended total length of the file
-  int64 length = 2;
+  int64 length = 1;
 
   // Name of file that's being transmitted
-  string filename = 3;
+  string filename = 2;
 
   // Segment of file being transferred
-  bytes buffer = 4;
+  bytes buffer = 3;
 }
 
 /*

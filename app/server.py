@@ -25,7 +25,6 @@ def split_file(filepath: str):
         return
 
     file_size = os.path.getsize(filepath)
-    segment_id = 0
     filename = os.path.basename(filepath)
     try:
         with open(filepath, 'rb') as file:
@@ -39,11 +38,9 @@ def split_file(filepath: str):
                 Need to remember that gRPC types that are generated require
                 keyword arguments NOT POSITIONAL
                 """
-                yield FileChunk(chunkSegmentId=segment_id,
-                                length=file_size,
+                yield FileChunk(length=file_size,
                                 filename=filename,
                                 buffer=chunk)
-                segment_id += 1
     except Exception as ex:
         logger.error(ex)
 
