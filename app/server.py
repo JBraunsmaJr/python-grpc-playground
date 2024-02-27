@@ -35,6 +35,10 @@ def split_file(filepath: str):
                 if len(chunk) == 0:
                     return
 
+                """
+                Need to remember that gRPC types that are generated require
+                keyword arguments NOT POSITIONAL
+                """
                 yield FileChunk(chunkSegmentId=segment_id,
                                 length=file_size,
                                 filename=filename,
@@ -54,7 +58,13 @@ def save_chunks_to_file(directory: str, chunks: List[FileChunk]) -> tuple[int, i
     if not chunks:
         return -1, -1
 
-    filepath: str  = None
+    """
+        Chunks / request_iterator is not subscribable. AKA cannot do something like 
+        chunks[0] <--- not allowed
+        Might be a better alternative to grabbing the initial set of data we want/need
+        for saving
+    """
+    filepath: str = None
     intended_length = None
     length = 0
 
@@ -69,6 +79,7 @@ def save_chunks_to_file(directory: str, chunks: List[FileChunk]) -> tuple[int, i
             length += len(chunk.buffer)
     except Exception as ex:
         logger.error(ex)
+    # cannot forget to close the file
     finally:
         if file_pointer is not None:
             file_pointer.close()
@@ -88,6 +99,8 @@ class TransferServer(TransferServiceServicer):
         logger.info("Started transfer on server")
         try:
             length, intended = save_chunks_to_file(self.__storage_dir, request_iterator)
+
+            # Again, type requires keyword arguments, not positional
             return TransferResponse(length=length,
                                     statusCode=200 if length == intended else 500,
                                     message="Missing segment" if length != intended else None)
@@ -114,15 +127,13 @@ def start_transfer_grpc_server(port: int):
 
 def transfer_file(filepath: str, server_address: str):
     try:
-        logger.info("prior")
         with grpc.insecure_channel(server_address) as channel:
-            logger.info("1")
             stub = TransferServiceStub(channel)
-            logger.info("2")
 
+            # IDK why, examples don't directly pass in the generator function result?
+            # But this follows the gRPC example online
             pointer = split_file(filepath)
             response = stub.Transfer(pointer)
-            logger.info("3")
             print(response)
 
             if isinstance(response, TransferResponse):
