@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+/*
+  Represents a subset of a file that can be streamed across the wire.
+ */
+message FileChunk {
+
+  /*
+    Not sure if required, but meant to behave as an ordering mechanism in the event latency could
+    result in consumer getting things out of order
+  */
+  int32 chunkSegmentId = 1;
+
+  // The intended total length of the file
+  int64 length = 2;
+
+  // Name of file that's being transmitted
+  string filename = 3;
+
+  // Segment of file being transferred
+  bytes buffer = 4;
+}
+
+/*
+  Response to a file being transmitted
+*/
+message TransferResponse {
+  // Total length received
+  int64 length = 1;
+
+  // Status code of transaction
+  int32 statusCode = 2;
+
+  // Message (if any) about the transaction. Reserved for when an error occurs
+  optional string message = 3;
+}
+
+/*
+  As a server, enable clients to transmit a file
+*/
+service TransferService {
+
+  // Transfer a file to server
+  rpc Transfer(stream FileChunk) returns (TransferResponse){};
+}
