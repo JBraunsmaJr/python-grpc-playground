@@ -1,7 +1,7 @@
 import logging
 import os
 from concurrent import futures
-from typing import List
+from typing import List, Iterable
 
 import grpc
 
@@ -45,7 +45,7 @@ def split_file(filepath: str):
         logger.error(ex)
 
 
-def save_chunks_to_file(directory: str, chunks: List[FileChunk]) -> tuple[int, int]:
+def save_chunks_to_file(directory: str, chunks: Iterable[FileChunk]) -> tuple[int, int]:
     """
     Stitch together chunks into a single file
     :param directory: Directory to save to
@@ -92,7 +92,9 @@ class TransferServer(TransferServiceServicer):
         if not os.path.exists(self.__storage_dir):
             os.makedirs(self.__storage_dir)
 
-    def Transfer(self, request_iterator, context):
+    def Transfer(self,
+                 request_iterator: Iterable[FileChunk],
+                 context: grpc.ServicerContext):
         logger.info("Started transfer on server")
         try:
             length, intended = save_chunks_to_file(self.__storage_dir, request_iterator)
@@ -126,11 +128,7 @@ def transfer_file(filepath: str, server_address: str):
     try:
         with grpc.insecure_channel(server_address) as channel:
             stub = TransferServiceStub(channel)
-
-            # IDK why, examples don't directly pass in the generator function result?
-            # But this follows the gRPC example online
-            pointer = split_file(filepath)
-            response = stub.Transfer(pointer)
+            response = stub.Transfer(split_file(filepath))
             print(response)
 
             if isinstance(response, TransferResponse):
