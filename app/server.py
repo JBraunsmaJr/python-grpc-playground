@@ -1,7 +1,8 @@
 import logging
 import os
 from concurrent import futures
-from typing import List, Iterable
+from typing import Iterable, AsyncIterable
+import asyncio
 
 import grpc
 
@@ -46,7 +47,7 @@ def split_file(filepath: str):
         logger.error(ex)
 
 
-def save_chunks_to_file(directory: str, chunks: Iterable[FileTransfer]) -> tuple[int, int]:
+async def save_chunks_to_file(directory: str, chunks: AsyncIterable[FileTransfer]) -> tuple[int, int]:
     """
     Stitch together chunks into a single file
     :param directory: Directory to save to
@@ -63,23 +64,29 @@ def save_chunks_to_file(directory: str, chunks: Iterable[FileTransfer]) -> tuple
         for saving
     """
 
-    items = list(chunks)
+    is_first = True
+    intended_length: int = -1
+    length: int = 0
+    pointer = None
 
-    file_info = items[0]
-
-    if file_info.fileInfo is None:
-        raise ValueError("First item sent should be of type 'FileInfo'")
-    intended_length = file_info.fileInfo.totalLength
-    length = 0
     try:
-        with open(os.path.join(directory, file_info.fileInfo.filename), "wb") as file:
-            for chunk in items[1:]:
-                if chunk.buffer is None:
-                    continue
-                file.write(chunk.buffer.buffer)
-                length += len(chunk.buffer.buffer)
+        async for transfer_item in chunks:
+            logger.info(transfer_item)
+            if is_first and transfer_item.fileInfo is not None:
+                is_first = False
+                file_path = os.path.join(directory, transfer_item.fileInfo.filename)
+                intended_length = transfer_item.fileInfo.totalLength
+                pointer = open(file_path, "wb")
+                continue
+
+            if transfer_item.buffer is not None:
+                pointer.write(transfer_item.buffer.buffer)
+                length += len(transfer_item.buffer.buffer)
     except Exception as ex:
         logger.error(ex)
+    finally:
+        if pointer is not None:
+            pointer.close()
 
     return length, intended_length
 
@@ -92,12 +99,13 @@ class TransferServer(TransferServiceServicer):
         if not os.path.exists(self.__storage_dir):
             os.makedirs(self.__storage_dir)
 
-    def Transfer(self,
-                 request_iterator: Iterable[FileTransfer],
-                 context: grpc.ServicerContext):
+    async def Transfer(self,
+                       request_iterator: AsyncIterable[FileTransfer],
+                       context: grpc.aio.ServicerContext):
         logger.info("Started transfer on server")
         try:
-            length, intended = save_chunks_to_file(self.__storage_dir, request_iterator)
+
+            length, intended = await save_chunks_to_file(self.__storage_dir, request_iterator)
 
             # Again, type requires keyword arguments, not positional
             return TransferResponse(length=length,
@@ -107,28 +115,28 @@ class TransferServer(TransferServiceServicer):
             logger.error(f"An error occurred while receiving file transfer:\n\t{ex}")
             return TransferResponse(length=-1,
                                     statusCode=500,
-                                    message="An error occurred during transfer")
+                                    message=f"An error occurred during transfer: {ex}")
 
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def start_transfer_grpc_server(port: int):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+async def start_transfer_grpc_server(port: int):
+    server = grpc.aio.server()
     add_TransferServiceServicer_to_server(
         TransferServer(os.path.join(SCRIPT_DIR, "..", "downloads")),
         server
     )
     server.add_insecure_port(f"[::]:{port}")
-    server.start()
-    server.wait_for_termination()
+    await server.start()
+    await server.wait_for_termination()
 
 
-def transfer_file(filepath: str, server_address: str):
+async def transfer_file(filepath: str, server_address: str):
     try:
-        with grpc.insecure_channel(server_address) as channel:
+        async with grpc.aio.insecure_channel(server_address) as channel:
             stub = TransferServiceStub(channel)
-            response = stub.Transfer(split_file(filepath))
+            response = await stub.Transfer(split_file(filepath))
             print(response)
 
             if isinstance(response, TransferResponse):
