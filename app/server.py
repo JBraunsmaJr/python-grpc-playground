@@ -5,7 +5,7 @@ from typing import List, Iterable
 
 import grpc
 
-from generated.file_transfers.file_transfers_pb2 import TransferResponse, FileChunk
+from generated.file_transfers.file_transfers_pb2 import TransferResponse, FileTransfer, FileInfo, Chunk
 from generated.file_transfers.file_transfers_pb2_grpc import (TransferServiceServicer,
                                                               TransferServiceStub,
                                                               add_TransferServiceServicer_to_server)
@@ -26,6 +26,9 @@ def split_file(filepath: str):
 
     file_size = os.path.getsize(filepath)
     filename = os.path.basename(filepath)
+    # This is the first bit of info about the content to be shipped
+    yield FileTransfer(fileInfo=FileInfo(totalLength=file_size, filename=filename))
+
     try:
         with open(filepath, 'rb') as file:
             while True:
@@ -38,14 +41,12 @@ def split_file(filepath: str):
                 Need to remember that gRPC types that are generated require
                 keyword arguments NOT POSITIONAL
                 """
-                yield FileChunk(length=file_size,
-                                filename=filename,
-                                buffer=chunk)
+                yield FileTransfer(buffer=Chunk(buffer=chunk))
     except Exception as ex:
         logger.error(ex)
 
 
-def save_chunks_to_file(directory: str, chunks: Iterable[FileChunk]) -> tuple[int, int]:
+def save_chunks_to_file(directory: str, chunks: Iterable[FileTransfer]) -> tuple[int, int]:
     """
     Stitch together chunks into a single file
     :param directory: Directory to save to
@@ -61,25 +62,24 @@ def save_chunks_to_file(directory: str, chunks: Iterable[FileChunk]) -> tuple[in
         Might be a better alternative to grabbing the initial set of data we want/need
         for saving
     """
-    filepath: str = None
-    intended_length = None
-    length = 0
 
-    file_pointer = None
+    items = list(chunks)
+
+    file_info = items[0]
+
+    if file_info.fileInfo is None:
+        raise ValueError("First item sent should be of type 'FileInfo'")
+    intended_length = file_info.fileInfo.totalLength
+    length = 0
     try:
-        for chunk in chunks:
-            if filepath is None:
-                filepath = os.path.join(directory, chunk.filename)
-                file_pointer = open(filepath, 'wb')
-                intended_length = chunk.length
-            file_pointer.write(chunk.buffer)
-            length += len(chunk.buffer)
+        with open(os.path.join(directory, file_info.fileInfo.filename), "wb") as file:
+            for chunk in items[1:]:
+                if chunk.buffer is None:
+                    continue
+                file.write(chunk.buffer.buffer)
+                length += len(chunk.buffer.buffer)
     except Exception as ex:
         logger.error(ex)
-    # cannot forget to close the file
-    finally:
-        if file_pointer is not None:
-            file_pointer.close()
 
     return length, intended_length
 
@@ -93,7 +93,7 @@ class TransferServer(TransferServiceServicer):
             os.makedirs(self.__storage_dir)
 
     def Transfer(self,
-                 request_iterator: Iterable[FileChunk],
+                 request_iterator: Iterable[FileTransfer],
                  context: grpc.ServicerContext):
         logger.info("Started transfer on server")
         try:

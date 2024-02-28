@@ -1,17 +1,29 @@
 syntax = "proto3";
 
 /*
-  Represents a subset of a file that can be streamed across the wire.
+  Object meant to ship a file across the wire.
+  To preserve data, the file info is only sent once. Followed by chunks
  */
-message FileChunk {
-  // The intended total length of the file
-  int64 length = 1;
+message FileTransfer {
+  oneof data {
+    FileInfo fileInfo = 1;
+    Chunk buffer = 2;
+  }
+}
 
-  // Name of file that's being transmitted
-  string filename = 2;
-
+// Represents a segment of data
+message Chunk {
   // Segment of file being transferred
-  bytes buffer = 3;
+  bytes buffer = 1;
+}
+
+// Contains basic information about a file that's about to be transmitted
+message FileInfo {
+  // Total length of file being transmitted
+  int64 totalLength = 1;
+
+  // Name of file being transmitted
+  string filename = 2;
 }
 
 /*
@@ -34,5 +46,5 @@ message TransferResponse {
 service TransferService {
 
   // Transfer a file to server
-  rpc Transfer(stream FileChunk) returns (TransferResponse){};
+  rpc Transfer(stream FileTransfer) returns (TransferResponse){};
 }

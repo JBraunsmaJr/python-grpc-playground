@@ -14,17 +14,21 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14\x66ile_transfers.proto\"=\n\tFileChunk\x12\x0e\n\x06length\x18\x01 \x01(\x03\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06\x62uffer\x18\x03 \x01(\x0c\"X\n\x10TransferResponse\x12\x0e\n\x06length\x18\x01 \x01(\x03\x12\x12\n\nstatusCode\x18\x02 \x01(\x05\x12\x14\n\x07message\x18\x03 \x01(\tH\x00\x88\x01\x01\x42\n\n\x08_message2@\n\x0fTransferService\x12-\n\x08Transfer\x12\n.FileChunk\x1a\x11.TransferResponse\"\x00(\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14\x66ile_transfers.proto\"O\n\x0c\x46ileTransfer\x12\x1d\n\x08\x66ileInfo\x18\x01 \x01(\x0b\x32\t.FileInfoH\x00\x12\x18\n\x06\x62uffer\x18\x02 \x01(\x0b\x32\x06.ChunkH\x00\x42\x06\n\x04\x64\x61ta\"\x17\n\x05\x43hunk\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\"1\n\x08\x46ileInfo\x12\x13\n\x0btotalLength\x18\x01 \x01(\x03\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\"X\n\x10TransferResponse\x12\x0e\n\x06length\x18\x01 \x01(\x03\x12\x12\n\nstatusCode\x18\x02 \x01(\x05\x12\x14\n\x07message\x18\x03 \x01(\tH\x00\x88\x01\x01\x42\n\n\x08_message2C\n\x0fTransferService\x12\x30\n\x08Transfer\x12\r.FileTransfer\x1a\x11.TransferResponse\"\x00(\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'file_transfers_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_FILECHUNK']._serialized_start=24
-  _globals['_FILECHUNK']._serialized_end=85
-  _globals['_TRANSFERRESPONSE']._serialized_start=87
-  _globals['_TRANSFERRESPONSE']._serialized_end=175
-  _globals['_TRANSFERSERVICE']._serialized_start=177
-  _globals['_TRANSFERSERVICE']._serialized_end=241
+  _globals['_FILETRANSFER']._serialized_start=24
+  _globals['_FILETRANSFER']._serialized_end=103
+  _globals['_CHUNK']._serialized_start=105
+  _globals['_CHUNK']._serialized_end=128
+  _globals['_FILEINFO']._serialized_start=130
+  _globals['_FILEINFO']._serialized_end=179
+  _globals['_TRANSFERRESPONSE']._serialized_start=181
+  _globals['_TRANSFERRESPONSE']._serialized_end=269
+  _globals['_TRANSFERSERVICE']._serialized_start=271
+  _globals['_TRANSFERSERVICE']._serialized_end=338
 # @@protoc_insertion_point(module_scope)
